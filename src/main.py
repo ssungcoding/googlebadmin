@@ -1,9 +1,19 @@
 from fastapi import FastAPI, File, UploadFile
 import os
-import subprocess
-from src.mediapipe_JSON import generate_MP_JSON
+import mediapipe as mp
+import cv2
 
 app = FastAPI()
+
+
+def is_badminton_motion(pose_landmarks):
+    # 배드민턴 동작을 인식하기 위한 조건 로직을 추가
+    left_hand = pose_landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_WRIST]
+    right_hand = pose_landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_WRIST]
+
+    if left_hand and right_hand:  # 조건 예시: 손의 위치가 특정 범위 내에 있을 때
+        return True
+    return False
 
 
 @app.post("/analyze-video/")
@@ -12,26 +22,16 @@ async def analyze_video(video: UploadFile = File(...)):
     with open(file_location, "wb") as file_object:
         file_object.write(video.file.read())
 
-    # Call the Mediapipe function to process the video
-    try:
-        generate_MP_JSON({"files": {"test_img_path": file_location}})
-        return {"message": "Video analyzed successfully."}
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.post("/plot-json/")
-async def plot_json(json_file: UploadFile = File(...)):
-    json_location = f"/tmp/{json_file.filename}"
-    output_image = json_location.replace(".json", "_output.png")
-    with open(json_location, "wb") as file_object:
-        file_object.write(json_file.file.read())
-
-    # Use subprocess to call plot_json.py
-    try:
-        subprocess.run(
-            ["python3", "src/plot_json.py", json_location, output_image, "1000", "1000"]
-        )
-        return {"message": "Plot created successfully", "image_path": output_image}
-    except Exception as e:
-        return {"error": str(e)}
+    # 비디오 파일을 Mediapipe로 분석
+    cap = cv2.VideoCapture(file_location)
+    mp_pose = mp.solutions.pose
+    with mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5) as pose:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            results = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            if results.pose_landmarks and is_badminton_motion(results.pose_landmarks):
+                return {"pose_detected": True}  # 배드민턴 동작 감지됨
+    cap.release()
+    return {"pose_detected": False}  # 배드민턴 동작 감지되지 않음
