@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     libsm6 \
     libxext6 \
     libxrender1 \
+    libgtk2.0-dev \
+    libgtk-3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 작업 디렉토리를 설정합니다.
