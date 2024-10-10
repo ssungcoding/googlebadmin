@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile
 import os
 import subprocess
-from mediapipe_JSON import generate_MP_JSON  # importing function from mediapipe_JSON.py
+from src.mediapipe_JSON import generate_MP_JSON
 
 app = FastAPI()
 
